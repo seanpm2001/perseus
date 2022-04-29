@@ -11,7 +11,7 @@ import ancesdir from "ancesdir";
 import autoExternal from "rollup-plugin-auto-external";
 import copy from "rollup-plugin-copy";
 import filesize from "rollup-plugin-filesize";
-import less from "rollup-plugin-less";
+import styles from "rollup-plugin-styles";
 import {terser} from "rollup-plugin-terser";
 
 const createBabelPlugins = require("./create-babel-plugins.js");
@@ -41,12 +41,19 @@ const makePackageBasedPath = (pkgName, pkgRelPath) =>
     path.normalize(path.join("packages", pkgName, pkgRelPath));
 
 /**
- * Generate the rollup output configuration for a given
+ * Generate the rollup output configuration for a given package
  */
 const createOutputConfig = (pkgName, format, targetFile) => ({
     file: makePackageBasedPath(pkgName, targetFile),
     sourcemap: true,
     format,
+
+    // Governs names of CSS files (for assets from CSS use `hash` option for
+    // url handler).
+    // Note: using value below will put `.css` files near js,
+    // but make sure to adjust `hash`, `assetDir` and `publicPath`
+    // options for url handler accordingly.
+    assetFileNames: "[name][extname]",
 });
 
 /**
@@ -70,6 +77,35 @@ const getSetFromDelimitedString = (arg, defaults) => {
  */
 const getFormats = ({configFormats}) =>
     getSetFromDelimitedString(configFormats, ["cjs", "esm"]);
+
+/**
+ * Mathquill CSS uses `url(/fonts/Symbola.ttf)` to referenced bundled fonts.
+ * Unfortunately, these paths are not valid at build time (Mathquill expects
+ * that you would move the fonts to that location when hosting them (eg.
+ * `/fonts/...)). So we end up having to resolve the fonts ourselves and
+ * extract them to the dist folder during the build.
+ */
+const resolveMathquillFonts = (inputUrl, basedir) => {
+    const dirMatch = basedir.match(
+        /(.*node_modules\/mathquill\/)/,
+        "$1/src/font/",
+    );
+    if (dirMatch == null || dirMatch.length === 0) {
+        return null;
+    }
+
+    const fileMatch = inputUrl.match(/\/fonts\/(.*)(#.*)?/);
+    if (fileMatch == null || fileMatch.length === 0) {
+        return null;
+    }
+
+    const finalPath = path.join(dirMatch[1], "src/font", fileMatch[1]);
+    return {
+        from: finalPath,
+        source: fs.readFileSync(finalPath),
+        urlQuery: fileMatch[2],
+    };
+};
 
 /**
  * Generate a rollup configuration.
@@ -109,14 +145,12 @@ const createConfig = (
                     raphael: path.join(rootDir, "vendor", "raphael"),
                 },
             }),
-            less({
-                output: path.join(
-                    rootDir,
-                    "packages",
-                    "perseus",
-                    "dist",
-                    "index.css",
-                ),
+            styles({
+                mode: "extract",
+                url: {
+                    publicPath: "assets",
+                    resolve: resolveMathquillFonts,
+                },
             }),
             babel({
                 babelHelpers: "bundled",
