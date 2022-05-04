@@ -10,6 +10,9 @@
   "module": "dist/es/index.js",
   "main": "dist/index.js",
   "source": "src/index.js",
+  "scripts": {
+    "generate-icons": "node tools/svg-to-react/convert.js tools/svg-to-react/icons/ src/components/iconography/"
+  },
   "dependencies": {
     "performance-now": "^0.2.0"
   },
