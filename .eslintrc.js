@@ -77,6 +77,13 @@ module.exports = {
             },
         },
         {
+            files: ["config/test/*"],
+            rules: {
+                "import/no-relative-packages": "off",
+                "import/no-commonjs": "off",
+            },
+        },
+        {
             files: [
                 "*.stories.jsx",
                 "*.stories.js",
@@ -87,6 +94,14 @@ module.exports = {
             ],
             rules: {
                 "import/no-relative-packages": "off",
+            },
+        },
+        {
+            files: ["utils/**"],
+            rules: {
+                "import/no-commonjs": "off",
+                "testing-library/no-debugging-utils": "off",
+                "no-console": "off",
             },
         },
     ],
